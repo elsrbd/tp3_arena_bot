@@ -21,6 +21,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 use uuid::Uuid;
+use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 /// Requête de minage envoyée aux threads mineurs.
 #[derive(Debug, Clone)]
@@ -50,52 +53,67 @@ pub struct MineResult {
 //   std::sync::mpsc::Sender<MineRequest>
 //   std::sync::mpsc::Receiver<MineResult>
 //
-// pub struct MinerPool {
-//     ...
-// }
+pub struct MinerPool {
+    pub sender: Sender<MineRequest>,
+    pub receiver: Receiver<MineResult>,
+}
 
 // TODO: Implémenter MinerPool.
 //
-// impl MinerPool {
-//     /// Crée un pool de `n` threads mineurs.
-//     ///
-//     /// Chaque thread :
-//     ///   1. Possède un Receiver<MineRequest> (partagé via Arc<Mutex<>>)
-//     ///   2. Possède un Sender<MineResult> (cloné pour chaque thread)
-//     ///   3. Boucle : recv() → pow_search() → send() si trouvé
-//     ///
-//     /// Indices :
-//     ///   - Un seul Receiver existe par channel. Pour le partager entre N threads,
-//     ///     il faut le wrapper dans Arc<Mutex<Receiver<MineRequest>>>.
-//     ///   - Chaque thread clone le Arc pour accéder au Receiver.
-//     ///   - pow::pow_search() prend un start_nonce et un batch_size.
-//     ///     Utilisez rand::random::<u64>() comme start_nonce pour que chaque
-//     ///     appel explore une zone différente.
-//     ///   - Batch size recommandé : 100_000
-//     ///
-//     pub fn new(n: usize) -> Self {
-//         // Créer les 2 channels :
-//         //   - (request_tx, request_rx) pour envoyer les challenges
-//         //   - (result_tx, result_rx) pour recevoir les solutions
-//         //
-//         // Wrapper request_rx dans Arc<Mutex<>>
-//         //
-//         // Pour chaque thread (0..n) :
-//         //   - Cloner le Arc<Mutex<Receiver<MineRequest>>>
-//         //   - Cloner le result_tx
-//         //   - thread::spawn(move || { ... boucle de minage ... })
-//         //
-//         // Retourner MinerPool { request_tx, result_rx }
-//         todo!()
-//     }
-//
-//     /// Envoie un challenge de minage au pool.
-//     pub fn submit(&self, request: MineRequest) {
-//         todo!()
-//     }
-//
-//     /// Tente de récupérer un résultat sans bloquer.
-//     pub fn try_recv(&self) -> Option<MineResult> {
-//         todo!()
-//     }
-// }
+impl MinerPool {
+    /// Crée un pool de `n` threads mineurs.
+    ///
+    /// Chaque thread :
+    ///   1. Possède un Receiver<MineRequest> (partagé via Arc<Mutex<>>)
+    ///   2. Possède un Sender<MineResult> (cloné pour chaque thread)
+    ///   3. Boucle : recv() → pow_search() → send() si trouvé
+    ///
+    /// Indices :
+    ///   - Un seul Receiver existe par channel. Pour le partager entre N threads,
+    ///     il faut le wrapper dans Arc<Mutex<Receiver<MineRequest>>>.
+    ///   - Chaque thread clone le Arc pour accéder au Receiver.
+    ///   - pow::pow_search() prend un start_nonce et un batch_size.
+    ///     Utilisez rand::random::<u64>() comme start_nonce pour que chaque
+    ///     appel explore une zone différente.
+    ///   - Batch size recommandé : 100_000
+    ///
+    pub fn new(n: usize) -> Self {
+        // Créer les 2 channels :
+        //   - (request_tx, request_rx) pour envoyer les challenges
+        //   - (result_tx, result_rx) pour recevoir les solutions
+        let (request_tx, request_rx) = channel::<MineRequest>();
+        let (result_tx, result_rx) = channel::<MineResult>();
+        //
+        // Wrapper request_rx dans Arc<Mutex<>>
+        let shared_rx = Arc::new(Mutex::new(request_rx));
+        //
+        // Pour chaque thread (0..n) :
+        //   - Cloner le Arc<Mutex<Receiver<MineRequest>>>
+        //   - Cloner le result_tx
+        //   - thread::spawn(move || { ... boucle de minage ... })
+        for _ in 0..n {
+            let rx_clone = Arc::clone(&shared_rx);
+            let tx_clone = result_tx.clone();
+
+            thread::spawn(move || {
+                // boucle de minage 
+                loop {
+                    
+                }
+            });
+        }
+        //
+        // Retourner MinerPool { request_tx, result_rx }
+        todo!()
+    }
+
+    /// Envoie un challenge de minage au pool.
+    pub fn submit(&self, request: MineRequest) {
+        todo!()
+    }
+
+    /// Tente de récupérer un résultat sans bloquer.
+    pub fn try_recv(&self) -> Option<MineResult> {
+        todo!()
+    }
+}

@@ -29,7 +29,7 @@ Le serveur héberge une arène compétitive : plusieurs bots (potentiellement de
 
 ### Connexion
 
-1. Se connecter en WebSocket à `ws://<host>:4000/ws`
+1. Se connecter en WebSocket à `wss://{url}/ws`
 2. Le serveur envoie immédiatement un message `Hello`
 3. Répondre avec `Register` pour rejoindre l'arène
 
