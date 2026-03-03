@@ -24,6 +24,9 @@ use uuid::Uuid;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use rand::random;
+
+use crate::pow::pow_search;
 
 /// Requête de minage envoyée aux threads mineurs.
 #[derive(Debug, Clone)]
@@ -96,24 +99,58 @@ impl MinerPool {
             let tx_clone = result_tx.clone();
 
             thread::spawn(move || {
-                // boucle de minage 
+                // Boucle de minage 
                 loop {
-                    
+                    // Réception de la request
+                    let request = {
+                        let rx_lock = rx_clone.lock().unwrap();
+                        match rx_lock.recv() {
+                            Ok(request) => request,
+                            Err(_) => break,
+                        }
+                    };
+
+                    let start_nonce = random::<u64>();
+                    let batch_size = 100_000;
+
+                    // Recherche d'un nonce
+                    let found_nonce = pow_search(
+                        &request.seed, 
+                        request.tick, 
+                        request.resource_id, 
+                        request.agent_id, 
+                        request.target_bits, 
+                        start_nonce, 
+                        batch_size
+                    );
+
+                    // Envoi du nonce trouvé
+                    if let Some(nonce) = found_nonce {
+                        let result = MineResult {
+                            tick: request.tick,
+                            resource_id: request.resource_id,
+                            nonce: nonce,
+                        };
+                        let _ = tx_clone.send(result);
+                    }
                 }
             });
         }
         //
         // Retourner MinerPool { request_tx, result_rx }
-        todo!()
+        MinerPool { 
+            sender: request_tx,
+            receiver: result_rx,
+        }        
     }
 
     /// Envoie un challenge de minage au pool.
     pub fn submit(&self, request: MineRequest) {
-        todo!()
+        let _ = self.sender.send(request);  // Gérer cas d'erreur
     }
 
     /// Tente de récupérer un résultat sans bloquer.
     pub fn try_recv(&self) -> Option<MineResult> {
-        todo!()
+        self.receiver.try_recv().ok()
     }
 }
