@@ -21,6 +21,7 @@ pub enum ServerMsg {
         y: u16,
         target_bits: u8,
         expires_at: u64,
+        value: u32,
     },
 
     /// Résultat d'un minage : un agent a résolu le challenge.
